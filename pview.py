@@ -378,7 +378,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"ok": True, "pid": os.getpid(), "port": PORT})
         if p == "/api/view":
             seq, view = STATE.snapshot()
-            return self._json({"seq": seq, "view": view, "default_dir": ROOTS[0] if ROOTS else HOME})
+            return self._json({"seq": seq, "view": view, "connected": STATE.connected(),
+                               "default_dir": ROOTS[0] if ROOTS else HOME})
         if p == "/api/poll":
             STATE.touch()
             seq, _ = STATE.snapshot()
@@ -408,13 +409,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.headers.get("X-Pview") != "1":
             return self._send(403, "text/plain; charset=utf-8", b"missing X-Pview header\n")
         u = urllib.parse.urlsplit(self.path)
-        if u.path != "/api/push":
+        if u.path not in ("/api/push", "/api/clientlog"):
             return self._send(404, "text/plain; charset=utf-8", b"not found\n")
         try:
             n = int(self.headers.get("Content-Length") or 0)
             payload = json.loads(self.rfile.read(n) or b"{}")
         except Exception as e:
             return self._json({"error": "bad payload: %s" % e}, 400)
+
+        if u.path == "/api/clientlog":
+            # the page reports its own failures here, so a browser on another machine
+            # can say what went wrong without anyone opening dev tools
+            if payload.get("level") == "error" or os.environ.get("PVIEW_DEBUG"):
+                sys.stderr.write("browser: %s\n" % str(payload.get("msg"))[:2000])
+                sys.stderr.flush()
+            return self._json({"ok": True})
 
         cwd = under_roots(payload.get("cwd") or "")
         if not cwd or not os.path.isdir(cwd):
@@ -595,6 +604,7 @@ def cmd_status(args):
     print("server: running (pid %s)   url %s" % (ping.get("pid"), URL))
     print("folder: %s%s" % (short(v.get("dir") or "-"), "  [recursive]" if v.get("recursive") else ""))
     print("pinned: %d   source: %s" % (len(v.get("pinned") or []), v.get("source") or "-"))
+    print("tab:    %s" % ("connected" if view.get("connected") else "none polling right now"))
     print("help:   pview -h  (setup and keys)   ·   ? inside the page")
     return 0
 

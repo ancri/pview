@@ -65,6 +65,26 @@ function flash(msg) {
   flash.t = setTimeout(updateFoot, 1500);
 }
 
+// The page reports its own failures to the server, so a browser on another machine can
+// say what went wrong without anyone opening dev tools. Errors land in the server log.
+function report(msg, level) {
+  try {
+    fetch("/api/clientlog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Pview": "1" },
+      body: JSON.stringify({ level: level || "error", msg: String(msg).slice(0, 2000) }),
+    }).catch(function () {});
+  } catch (e) { /* reporting must never break the page */ }
+}
+
+addEventListener("error", function (e) {
+  if (e.target && e.target !== window) return;  // resource errors are reported where they happen
+  report("js error: " + (e.message || e.error) + " at " + (e.filename || "") + ":" + (e.lineno || 0));
+});
+addEventListener("unhandledrejection", function (e) {
+  report("unhandled rejection: " + ((e.reason && e.reason.message) || e.reason));
+});
+
 // ---------------------------------------------------------------- data loading
 
 async function loadList(selectPath, keepPosition) {
@@ -271,8 +291,19 @@ el.img.addEventListener("load", () => {
 });
 
 el.img.addEventListener("error", () => {
+  const it = S.cur;
   el.img.hidden = true;
-  el.empty.textContent = "could not load " + (S.cur ? S.cur.label : "");
+  el.empty.textContent = "could not load " + (it ? it.label : "");
+  if (!it) return;
+  // ask the server about the same file, so the message says whose fault it is
+  fetch(imgUrl(it), { method: "HEAD" }).then((r) => {
+    el.empty.textContent = "could not load " + it.label + " — server answered " + r.status +
+      " (" + (r.headers.get("content-type") || "no type") + ", " + (r.headers.get("content-length") || "?") + " bytes)";
+    report("image failed to decode: " + it.path + " HEAD=" + r.status + " type=" + r.headers.get("content-type"));
+  }).catch((e) => {
+    el.empty.textContent = "could not load " + it.label + " — no answer from the server";
+    report("image request failed: " + it.path + " " + e);
+  });
 });
 
 function stageSize() {
@@ -566,6 +597,17 @@ el.help.addEventListener("click", () => { el.help.hidden = true; });
     }
   } catch (e) {
     setOffline(true);
+    report("init failed: " + e);
   }
   poll();
+  setTimeout(() => {
+    const it = S.items[S.sel];
+    report("loaded: " + navigator.userAgent +
+      " window=" + innerWidth + "x" + innerHeight + " dpr=" + devicePixelRatio +
+      " stage=" + el.stage.clientWidth + "x" + el.stage.clientHeight +
+      " items=" + S.items.length + " sel=" + (it ? it.kind + ":" + it.label : "none") +
+      " img=" + (S.cur ? (el.img.complete ? "complete " + el.img.naturalWidth + "x" + el.img.naturalHeight +
+        " shown " + Math.round(el.img.getBoundingClientRect().width) + "x" +
+        Math.round(el.img.getBoundingClientRect().height) : "still loading") : "none"), "info");
+  }, 2500);
 })();

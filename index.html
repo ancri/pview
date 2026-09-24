@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pview</title>
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#f5f6f7; --panel:#fff; --text:#1d1f21; --dim:#71767d; --line:#e3e5e9;
+  --accent:#2848a9; --selbg:#e7ecfa; --stage:#e8e9ed; --pin:#ac5402; --bad:#a5222f;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#16171a; --panel:#1c1e22; --text:#e5e7ea; --dim:#959ba3; --line:#2b2e34;
+        --accent:#7ba2ff; --selbg:#232b3c; --stage:#101114; --pin:#e0a341; --bad:#ff6b6b;}
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{display:grid;grid-template-columns:minmax(210px,20%) 1fr;
+     font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg)}
+
+#side{display:flex;flex-direction:column;min-width:0;background:var(--panel);border-right:1px solid var(--line)}
+#head{padding:8px 10px 6px;border-bottom:1px solid var(--line);min-width:0}
+#path{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left}
+#meta{display:flex;gap:6px;align-items:center;margin-top:3px;color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden}
+.badge{border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--dim)}
+.badge.on{border-color:var(--accent);color:var(--accent)}
+#filter{margin:6px 8px;padding:4px 6px;font:inherit;font-size:12px;color:var(--text);
+        background:var(--bg);border:1px solid var(--accent);border-radius:4px;outline:none}
+#filter[hidden]{display:none}
+#list{flex:1;margin:0;padding:2px 0;list-style:none;overflow-y:auto;overflow-x:hidden}
+.item{display:flex;gap:6px;align-items:baseline;padding:2px 10px;cursor:default;white-space:nowrap;min-width:0}
+.item .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+.item .ag{color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
+.item.dir .nm{color:var(--dim)}
+.item.pin .nm::before{content:"● ";color:var(--pin);font-size:9px;vertical-align:1px}
+.item.sel{background:var(--selbg);box-shadow:inset 2px 0 0 var(--accent)}
+.sep{margin:4px 10px;border-top:1px dashed var(--line)}
+#foot{display:flex;justify-content:space-between;gap:8px;padding:4px 10px;border-top:1px solid var(--line);
+      color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden}
+#status.bad{color:var(--bad)}
+
+#main{display:flex;flex-direction:column;min-width:0;min-height:0}
+#bar{display:flex;gap:12px;align-items:baseline;padding:5px 12px;border-bottom:1px solid var(--line);
+     background:var(--panel);font-size:12px;white-space:nowrap;overflow:hidden}
+#fname{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+#bar span:not(#fname){color:var(--dim);font-variant-numeric:tabular-nums}
+#stage{position:relative;flex:1;overflow:hidden;background:var(--stage);cursor:grab;touch-action:none}
+#stage.drag{cursor:grabbing}
+#img{position:absolute;left:0;top:0;transform-origin:0 0;background:#fff;
+     user-select:none;-webkit-user-drag:none;box-shadow:0 1px 6px rgba(0,0,0,.18)}
+#img[hidden]{display:none}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+       color:var(--dim);font-size:13px;text-align:center;padding:20px}
+
+#help{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.45);backdrop-filter:blur(2px)}
+#help[hidden]{display:none}
+#helpbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 20px;
+         max-width:560px;max-height:88vh;overflow:auto;box-shadow:0 8px 40px rgba(0,0,0,.35)}
+#helpbox h2{margin:0 0 10px;font-size:14px}
+#helpbox h3{margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+#helpbox code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+              background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:0 3px}
+#helpbox table{border-collapse:collapse;font-size:12.5px}
+#helpbox td{padding:2px 10px 2px 0;vertical-align:top}
+#helpbox td:first-child{color:var(--accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
+</style>
+</head>
+<body>
+<aside id="side">
+  <header id="head">
+    <div id="path">&nbsp;</div>
+    <div id="meta"><span id="count"></span><span id="badges"></span></div>
+  </header>
+  <input id="filter" placeholder="filter" autocomplete="off" spellcheck="false" hidden>
+  <ul id="list"></ul>
+  <footer id="foot"><span id="status"></span><span id="hint">? keys</span></footer>
+</aside>
+
+<main id="main">
+  <div id="bar">
+    <span id="fname">pview</span>
+    <span id="fdims"></span>
+    <span id="fage"></span>
+    <span id="fzoom"></span>
+    <span id="fmode"></span>
+  </div>
+  <div id="stage">
+    <img id="img" alt="" draggable="false" hidden>
+    <div id="empty">no image selected</div>
+  </div>
+</main>
+
+<div id="help" hidden><div id="helpbox">
+  <h2>pview keys</h2>
+  <table>
+    <tr><td>j / k</td><td>next / previous entry (arrows work too)</td></tr>
+    <tr><td>g / G</td><td>first / last entry</td></tr>
+    <tr><td>l / Enter</td><td>open folder</td></tr>
+    <tr><td>h / Backspace</td><td>parent folder</td></tr>
+    <tr><td>/</td><td>filter the list (Enter keeps it, Esc clears)</td></tr>
+    <tr><td>r</td><td>include images in subfolders</td></tr>
+    <tr><td>s</td><td>sort by time or by name</td></tr>
+    <tr><td>wheel / pinch</td><td>zoom at the pointer</td></tr>
+    <tr><td>drag</td><td>move the image</td></tr>
+    <tr><td>double click</td><td>zoom in at that spot, again to fit</td></tr>
+    <tr><td>+ / - / 0 / 1</td><td>zoom in, out, fit, actual size</td></tr>
+    <tr><td>w</td><td>fit width instead of whole image</td></tr>
+    <tr><td>H J K L</td><td>move the image with the keyboard</td></tr>
+    <tr><td>o / y</td><td>open image in a new tab / copy its path</td></tr>
+    <tr><td>Esc</td><td>clear the filter, else reset zoom</td></tr>
+    <tr><td>?</td><td>this list</td></tr>
+  </table>
+  <h3>from the terminal</h3>
+  <table>
+    <tr><td>tmux key</td><td>whichever key you bound to <code>pview push</code> (Prefix + i in the README) sends that pane's folder here and pins the image paths on its screen</td></tr>
+    <tr><td>pview</td><td>send the current folder; also <code>pview dir</code>, <code>pview plot.png</code>, <code>-r</code> for subfolders</td></tr>
+    <tr><td>pview -h</td><td>these keys, the ssh setup, and this install's paths and folders</td></tr>
+    <tr><td>pview status</td><td>is the server up, what is it showing</td></tr>
+  </table>
+  <h3>reaching it over ssh</h3>
+  <table>
+    <tr><td>~/.ssh/config</td><td><code>LocalForward 8765 127.0.0.1:8765</code> under the host you connect to; with connection sharing it applies on the next fresh connection</td></tr>
+    <tr><td>one-off</td><td><code>ssh -N -L 8765:127.0.0.1:8765 &lt;host&gt;</code> on the machine you sit at, then open this URL there</td></tr>
+  </table>
+</div></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

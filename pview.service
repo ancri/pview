@@ -1,0 +1,17 @@
+[Unit]
+Description=pview image viewer (localhost:8765)
+
+[Service]
+ExecStart=%h/src/pview/pview.py serve
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
+
+# Optional. pview starts itself whenever you run it or press your tmux key, so you only
+# need this if you want the viewer up right after a reboot. Point ExecStart at wherever
+# you cloned pview, then:
+#   ln -sf <clone>/pview.service ~/.config/systemd/user/pview.service
+#   systemctl --user daemon-reload && systemctl --user enable --now pview
+# To keep it running while you are logged out: loginctl enable-linger $USER

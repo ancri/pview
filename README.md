@@ -94,9 +94,9 @@ output you just read.
 | Keys | Action |
 |---|---|
 | j k, arrows, g G | Move in the list |
-| l or Enter, h or Backspace | Into a folder, up a folder |
+| l or Enter, h or Backspace | Into a folder, up a folder. On a file, `l` goes to the folder that file lives in |
 | / | Filter the list (Enter keeps it, Esc clears) |
-| r, s | Include subfolders, sort by time or name |
+| r, s | Also list images from subfolders, sort by time or name |
 | wheel or pinch | Zoom at the pointer |
 | drag, double click | Move the image, zoom in there and back to fit |
 | 0 1 w + - | Fit, actual size, fit width, zoom in, zoom out |

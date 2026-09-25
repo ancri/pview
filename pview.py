@@ -189,7 +189,13 @@ def _scan(dirpath, recursive):
                         continue
                     try:
                         if e.is_dir(follow_symlinks=False):
-                            if e.name not in SKIP_DIRS and depth + 1 <= MAX_DEPTH:
+                            if e.name in SKIP_DIRS:
+                                continue
+                            # the immediate subfolders are listed even here, so the page
+                            # can still walk down while showing a recursive file list
+                            if depth == 0:
+                                dirs.append({"name": e.name, "p": os.path.join(cur, e.name)})
+                            if depth + 1 <= MAX_DEPTH:
                                 stack.append((os.path.join(cur, e.name), depth + 1))
                         elif e.is_file() and os.path.splitext(e.name)[1].lower() in IMAGE_EXTS:
                             st = e.stat()

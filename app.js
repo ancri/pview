@@ -166,7 +166,7 @@ function buildItems() {
   const items = [];
   if (L.parent) items.push({ kind: "up", path: L.parent, label: "../" });
   for (const e of S.pinned) items.push({ kind: "img", path: e.p, label: e.rel, m: e.m, s: e.s, pin: true });
-  if (!S.recursive) for (const d of L.dirs || []) items.push({ kind: "dir", path: d.p, label: d.name + "/" });
+  for (const d of L.dirs || []) items.push({ kind: "dir", path: d.p, label: d.name + "/" });
   let imgs = (L.images || []).filter((e) => !pinned.has(e.p));
   if (S.sort === "name") {
     imgs = imgs.slice().sort((a, b) => a.rel.localeCompare(b.rel, undefined, { numeric: true }));
@@ -214,7 +214,8 @@ function updateHead() {
   const nimg = S.items.filter((i) => i.kind === "img").length;
   el.count.textContent = nimg + (nimg === 1 ? " image" : " images") + (S.filter ? " (filtered)" : "");
   const b = [];
-  b.push('<span class="badge' + (S.recursive ? " on" : "") + '">r: subfolders</span>');
+  b.push('<span class="badge' + (S.recursive ? " on" : "") + '" title="r toggles this">subfolders ' +
+    (S.recursive ? "on" : "off") + "</span>");
   b.push('<span class="badge">sort: ' + S.sort + "</span>");
   if (S.pinned.length) b.push('<span class="badge on" title="' + esc(S.source || "") + '">' + S.pinned.length + " from screen</span>");
   el.badges.innerHTML = b.join(" ");
@@ -388,6 +389,14 @@ async function openSel() {
   if (it.kind === "dir" || it.kind === "up") {
     S.pinned = [];
     await setDir(it.path, S.recursive, null);
+  } else if (it.kind === "img") {
+    // on a file, go to the folder it lives in - the useful move when a recursive
+    // listing shows something several folders down
+    const dir = it.path.slice(0, it.path.lastIndexOf("/"));
+    if (dir && dir !== S.dir) {
+      S.pinned = [];
+      await setDir(dir, S.recursive, it.path);
+    }
   }
 }
 

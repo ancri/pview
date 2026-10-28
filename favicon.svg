@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Solid warm tile so the tab stands out in a strip of mostly blue and white
+       favicons, with a chart that still reads as a chart at 16px. -->
+  <rect width="64" height="64" rx="14" fill="#f4511e"/>
+  <g fill="#fff">
+    <rect x="13" y="36" width="10" height="15" rx="2.5"/>
+    <rect x="27" y="26" width="10" height="25" rx="2.5"/>
+    <rect x="41" y="14" width="10" height="37" rx="2.5"/>
+  </g>
+</svg>

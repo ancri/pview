@@ -380,6 +380,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                "script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'")
         if p == "/app.js":
             return self._asset("app.js", "application/javascript; charset=utf-8")
+        if p in ("/favicon.svg", "/favicon.ico"):
+            return self._asset("favicon.svg", "image/svg+xml")
         if p == "/api/ping":
             return self._json({"ok": True, "pid": os.getpid(), "port": PORT})
         if p == "/api/view":
